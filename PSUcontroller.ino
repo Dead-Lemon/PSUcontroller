@@ -16,14 +16,11 @@ const int  DCamps_in = A0;
 const int  DCvolts_in = A2;
 
 float ACamps, DCamps, DCvolts; 
-const float Vfloat = 2.5; //sets the voltage expected at 0A
-const float sensitivity = 0.2; //(100mA / 500mV) sets the voltage steps expected.
-
 
 uint32_t currentMillis, previousMillis, battMillis = 0;
 uint32_t updateRate = 1000; // 1second
 uint32_t updateBattery = 60000; //1 minuite
-uint8_t powerLevel = 0; //set power availability, 0 = all off 3 = all on
+uint8_t powerLevel = 0; //set power availability, 0 = all off | 3 = all on
 const uint8_t powerLevelMax = 4;
 
 void setup() {
@@ -52,27 +49,28 @@ void setup() {
 
 void loop() {
 
-  ACamps = ac_read(analogRead(ACamps_in));
-  DCamps = (((((float)analogRead(DCamps_in))-509.0f)/512)*30.0f); //
-  DCvolts = ((((float)analogRead(DCvolts_in))/1024.0f)*16.2f); 
-  checkBattery();
-  currentMillis = millis();
+  ACamps = ac_read(analogRead(ACamps_in)); //get RMS sample from raw 
+  DCamps = (((((float)analogRead(DCamps_in))-509.0f)/512)*30.0f); //rescales raw analog to 0-30A
+  DCvolts = ((((float)analogRead(DCvolts_in))/1024.0f)*16.2f); //scales voltage divider from 0-16.2v
   
-  if ((currentMillis - previousMillis) > updateRate) { //serial print every second  
-  Serial.print("AC Amps: ");
-  Serial.println(ACamps);  
-  Serial.print("DC Amps: ");
-  Serial.println(DCamps);
-  Serial.print("DC Volts: ");
-  Serial.println(DCvolts);
-  Serial.print("Power Level: ");
-  Serial.println(powerLevel);
-  Serial.print("AC Power: ");
-  Serial.println(ACamps*230);
-  Serial.print("DC Power: ");
-  Serial.println(DCamps*DCvolts);
-  Serial.println("----------------------");
-  previousMillis = currentMillis;
+  checkBattery(); //check battery state & update power level
+  
+  currentMillis = millis();
+    if ((currentMillis - previousMillis) > updateRate) { //serial print every second  
+    Serial.print("AC Amps: ");
+    Serial.println(ACamps);  
+    Serial.print("DC Amps: ");
+    Serial.println(DCamps);
+    Serial.print("DC Volts: ");
+    Serial.println(DCvolts);
+    Serial.print("Power Level: ");
+    Serial.println(powerLevel);
+    Serial.print("AC Power: ");
+    Serial.println(ACamps*230);
+    Serial.print("DC Power: ");
+    Serial.println(DCamps*DCvolts);
+    Serial.println("----------------------");
+    previousMillis = currentMillis;
   }
 
 }
@@ -82,7 +80,7 @@ double ac_read(int rawAnalog) {
   int sampleDuration = 100;       // 100ms
   uint32_t sampleCount = 0;
   unsigned long rSquaredSum = 0;
-  int rZero = 510;                // should be measured to calibrate sensor.
+  int rZero = 510;                // offset to zero reading
 
   uint32_t startTime = millis();  // take samples for 100ms
   while((millis()-startTime) < sampleDuration)
@@ -103,7 +101,7 @@ double ac_read(int rawAnalog) {
   return(ampsRMS);
 }
 
-void checkBattery() { //when battery is lower than 12.1V, system will start to reduce load. 
+void checkBattery() { //check battery level, allows only once per minuite. Load is added if the voltage is  above 12.5V, load is removed is voltage is below 11.9v
   if ((currentMillis-battMillis) > updateBattery) { 
     if ((DCvolts > 12.5f) and (powerLevel < powerLevelMax)) {
       powerLevel++;
@@ -111,7 +109,7 @@ void checkBattery() { //when battery is lower than 12.1V, system will start to r
       powerLevel--;
     }
     battMillis = currentMillis;
-    updatePowerOutlet();
+    updatePowerOutlet(); //update relay state with current set power level
   }
 }
 void updatePowerOutlet() {
