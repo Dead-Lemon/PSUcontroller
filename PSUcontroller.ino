@@ -15,14 +15,16 @@ const int ACamps_in = A1;
 const int  DCamps_in = A0;
 const int  DCvolts_in = A2;
 
-float DCamps, DCvolts;
-double ACamps;
+float ACamps, DCamps, DCvolts; 
 const float Vfloat = 2.5; //sets the voltage expected at 0A
 const float sensitivity = 0.2; //(100mA / 500mV) sets the voltage steps expected.
 
 
-uint32_t currentMillis, previousMillis = 0;
-uint16_t updateRate = 1000; // 1second
+uint32_t currentMillis, previousMillis, battMillis = 0;
+uint32_t updateRate = 1000; // 1second
+uint32_t updateBattery = 60000; //1 minuite
+uint8_t powerLevel = 0; //set power availability, 0 = all off 3 = all on
+const uint8_t powerLevelMax = 4;
 
 void setup() {
   // put your setup code here, to run once:
@@ -37,13 +39,13 @@ void setup() {
   pinMode(v5_4pin, OUTPUT);
   pinMode(fan_pin, OUTPUT);
 
-  digitalWrite(v19_1pin, LOW);
-  digitalWrite(v12_1pin, LOW);
-  digitalWrite(v12_2pin, LOW);
-  digitalWrite(v5_1pin, LOW);
-  digitalWrite(v5_2pin, LOW);
-  digitalWrite(v5_3pin, LOW);
-  digitalWrite(v5_4pin, LOW);
+  digitalWrite(v19_1pin, HIGH);
+  digitalWrite(v12_1pin, HIGH);
+  digitalWrite(v12_2pin, HIGH);
+  digitalWrite(v5_1pin, HIGH);
+  digitalWrite(v5_2pin, HIGH);
+  digitalWrite(v5_3pin, HIGH);
+  digitalWrite(v5_4pin, HIGH);
   digitalWrite(fan_pin, HIGH);
   
 }
@@ -89,5 +91,72 @@ double ac_read(int rawAnalog) {
   // divide by the number of millivolts per amp to determine amps measured
   // the 20A module 100 mv/A (so in this case ampsRMS = 10 * voltRMS
   double ampsRMS = voltRMS * 10.0;
-  return(ampsRMS);
+  return((float)ampsRMS);
 }
+
+void checkBattery() { //when battery is lower than 12.2V, system will start to reduce load. 
+  if ((currentMillis-battMillis) > updateBattery) { 
+    if ((DCvolts > 12.8) and (powerLevel < powerLevelMax)) {
+      powerLevel++;
+    }
+    if ((DCvolts < 12.2) and (powerLevel > 0)) {
+      powerLevel--;
+    }
+  }
+}
+void updatePowerOutlet() {
+  switch (powerLevel) {
+    case 0:
+      digitalWrite(v19_1pin, HIGH);
+      digitalWrite(v12_1pin, HIGH);
+      digitalWrite(v12_2pin, HIGH);
+      digitalWrite(v5_1pin, HIGH);
+      digitalWrite(v5_2pin, HIGH);
+      digitalWrite(v5_3pin, HIGH);
+      digitalWrite(v5_4pin, HIGH);
+      digitalWrite(fan_pin, LOW);
+    break;
+    case 1:
+      digitalWrite(v19_1pin, HIGH);
+      digitalWrite(v12_1pin, LOW); //enable switches
+      digitalWrite(v12_2pin, LOW); //enable router
+      digitalWrite(v5_1pin, LOW); //enable PiHole
+      digitalWrite(v5_2pin, HIGH);
+      digitalWrite(v5_3pin, HIGH);
+      digitalWrite(v5_4pin, HIGH);
+      digitalWrite(fan_pin, HIGH); //enable fan
+    break;
+    case 2:
+      digitalWrite(v19_1pin, LOW); //enable NAS
+      digitalWrite(v12_1pin, LOW); //enable switches
+      digitalWrite(v12_2pin, LOW); //enable router
+      digitalWrite(v5_1pin, LOW); //enable PiHole
+      digitalWrite(v5_2pin, HIGH);
+      digitalWrite(v5_3pin, HIGH);
+      digitalWrite(v5_4pin, HIGH);
+      digitalWrite(fan_pin, HIGH); //enable fan
+    break;
+    case 3:
+      digitalWrite(v19_1pin, LOW); //enable NAS
+      digitalWrite(v12_1pin, LOW); //enable switches
+      digitalWrite(v12_2pin, LOW); //enable router
+      digitalWrite(v5_1pin, LOW); //enable PiHole
+      digitalWrite(v5_2pin, LOW); //enable downloadPi
+      digitalWrite(v5_3pin, HIGH);
+      digitalWrite(v5_4pin, HIGH);
+      digitalWrite(fan_pin, HIGH); //enable Fan
+    break;
+    case 4:
+      digitalWrite(v19_1pin, LOW); //enable all loads
+      digitalWrite(v12_1pin, LOW);
+      digitalWrite(v12_2pin, LOW);
+      digitalWrite(v5_1pin, LOW);
+      digitalWrite(v5_2pin, LOW);
+      digitalWrite(v5_3pin, LOW);
+      digitalWrite(v5_4pin, LOW);
+      digitalWrite(fan_pin, HIGH);
+    break;
+ 
+  }
+}
+  
