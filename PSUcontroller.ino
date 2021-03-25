@@ -53,17 +53,24 @@ void setup() {
 void loop() {
 
   ACamps = ac_read(analogRead(ACamps_in));
-  DCamps = map(analogRead(DCamps_in), 0, 1023, -30.0, 30.0);
-  DCvolts = map(analogRead(DCvolts_in), 0, 1023, 0.0, 15.64);
-  
+  DCamps = (((((float)analogRead(DCamps_in))-509.0f)/512)*30.0f); //
+  DCvolts = ((((float)analogRead(DCvolts_in))/1024.0f)*16.2f); 
+  checkBattery();
   currentMillis = millis();
-  if ((currentMillis - previousMillis) > updateRate) { //serial print every second
+  
+  if ((currentMillis - previousMillis) > updateRate) { //serial print every second  
   Serial.print("AC Amps: ");
   Serial.println(ACamps);  
   Serial.print("DC Amps: ");
   Serial.println(DCamps);
   Serial.print("DC Volts: ");
   Serial.println(DCvolts);
+  Serial.print("Power Level: ");
+  Serial.println(powerLevel);
+  Serial.print("AC Power: ");
+  Serial.println(ACamps*230);
+  Serial.print("DC Power: ");
+  Serial.println(DCamps*DCvolts);
   Serial.println("----------------------");
   previousMillis = currentMillis;
   }
@@ -73,9 +80,9 @@ void loop() {
 double ac_read(int rawAnalog) {
   int rVal = 0;
   int sampleDuration = 100;       // 100ms
-  int sampleCount = 0;
+  uint32_t sampleCount = 0;
   unsigned long rSquaredSum = 0;
-  int rZero = 511;                // should be measured to calibrate sensor.
+  int rZero = 510;                // should be measured to calibrate sensor.
 
   uint32_t startTime = millis();  // take samples for 100ms
   while((millis()-startTime) < sampleDuration)
@@ -86,28 +93,31 @@ double ac_read(int rawAnalog) {
   }
 
   double voltRMS = 5.0 * sqrt(rSquaredSum / sampleCount) / 1024.0;
-
+  //Serial.print(rSquaredSum);
+  //Serial.print(sampleCount);
   // x 1000 to convert volts to millivolts
   // divide by the number of millivolts per amp to determine amps measured
   // the 20A module 100 mv/A (so in this case ampsRMS = 10 * voltRMS
   double ampsRMS = voltRMS * 10.0;
-  return((float)ampsRMS);
+  //Serial.print(ampsRMS);
+  return(ampsRMS);
 }
 
-void checkBattery() { //when battery is lower than 12.2V, system will start to reduce load. 
+void checkBattery() { //when battery is lower than 12.1V, system will start to reduce load. 
   if ((currentMillis-battMillis) > updateBattery) { 
-    if ((DCvolts > 12.8) and (powerLevel < powerLevelMax)) {
+    if ((DCvolts > 12.5f) and (powerLevel < powerLevelMax)) {
       powerLevel++;
-    }
-    if ((DCvolts < 12.2) and (powerLevel > 0)) {
+    } else if ((DCvolts < 11.9f) and (powerLevel > 0)) {
       powerLevel--;
     }
+    battMillis = currentMillis;
+    updatePowerOutlet();
   }
 }
 void updatePowerOutlet() {
   switch (powerLevel) {
     case 0:
-      digitalWrite(v19_1pin, HIGH);
+      digitalWrite(v19_1pin, HIGH); //all off
       digitalWrite(v12_1pin, HIGH);
       digitalWrite(v12_2pin, HIGH);
       digitalWrite(v5_1pin, HIGH);
