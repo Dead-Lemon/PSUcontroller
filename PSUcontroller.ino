@@ -89,5 +89,5 @@ double ac_read(int rawAnalog) {
   // divide by the number of millivolts per amp to determine amps measured
   // the 20A module 100 mv/A (so in this case ampsRMS = 10 * voltRMS
   double ampsRMS = voltRMS * 10.0;
-  Serial.println(ampsRMS);
+  return(ampsRMS);
 }
