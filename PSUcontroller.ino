@@ -101,11 +101,11 @@ double ac_read(int rawAnalog) {
   return(ampsRMS);
 }
 
-void checkBattery() { //check battery level, allows only once per minuite. Load is added if the voltage is  above 12.5V, load is removed is voltage is below 11.9v
+void checkBattery() { //check battery level, allows only once per minuite. Load is added if the voltage is  above 12.2V, load is removed is voltage is below 11.4v
   if ((currentMillis-battMillis) > updateBattery) { 
-    if ((DCvolts > 12.5f) and (powerLevel < powerLevelMax)) {
+    if ((DCvolts > 12.2f) and (powerLevel < powerLevelMax)) {
       powerLevel++;
-    } else if ((DCvolts < 11.9f) and (powerLevel > 0)) {
+    } else if ((DCvolts < 11.4f) and (powerLevel > 0)) {
       powerLevel--;
     }
     battMillis = currentMillis;
