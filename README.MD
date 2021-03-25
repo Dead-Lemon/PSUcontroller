@@ -4,4 +4,4 @@ Device monitors battery voltage, battery bidirectional current and AC input curr
 
 System can has 6 relays that will disconnect loads as battery discharges. removing all load if battery is below 11.8v
 
-Data is published to InfluxDB
+Data is published to InfluxDB using UDP
